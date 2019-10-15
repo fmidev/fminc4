@@ -7,8 +7,8 @@ namespace fminc4
 {
 
 // definitions
-std::mutex fileCacheMutex;
-std::map<std::string, std::shared_ptr<nc_file>> fileCache;
+std::mutex netcdfLibMutex;
+std::map<std::string, std::unique_ptr<nc_file>> fileCache;
 
 /*
  * Create a new netcdf file
@@ -19,17 +19,17 @@ std::map<std::string, std::shared_ptr<nc_file>> fileCache;
 nc_group Create(const std::string& path)
 {
 	// Ensure thread safety
-	std::lock_guard<std::mutex> lock(fileCacheMutex);
+	std::lock_guard<std::mutex> lock(netcdfLibMutex);
 
 	if(fileCache.count(path) == 0)
 	{
         	int itsNcId;
-      		int status = nc_create(path.c_str(), NC_NETCDF4, &itsNcId);
+      		int status = nc_create(path.c_str(), kNc4, &itsNcId);
 		if(status != NC_NOERR)
 			throw status;
-	  	fileCache[path] = std::make_shared<nc_file>(itsNcId);
+	  	fileCache[path] = std::unique_ptr<nc_file>(new nc_file(itsNcId)); //std::make_unique<nc_file>(itsNcId);
 	}
-	return nc_group(fileCache[path], fileCache[path]->itsNcId);
+	return nc_group(fileCache[path].get(), fileCache[path]->itsNcId);
 }
 
 /*
@@ -39,7 +39,7 @@ nc_group Create(const std::string& path)
 nc_group Open(const std::string& path)
 {
 	// Ensure thread safety
-	std::lock_guard<std::mutex> lock(fileCacheMutex);
+	std::lock_guard<std::mutex> lock(netcdfLibMutex);
 
 	if(fileCache.count(path) == 0)
 	{
@@ -47,10 +47,10 @@ nc_group Open(const std::string& path)
 		int status = nc_open(path.c_str(), kNcShare, &itsNcId);
         	if(status != NC_NOERR)
                 	throw status;
-        	fileCache[path] = std::make_shared<nc_file>(itsNcId);
+        	fileCache[path] = std::unique_ptr<nc_file>(new nc_file(itsNcId)); //std::make_unique<nc_file>(itsNcId);
 	}
 
-	return nc_group(fileCache[path], fileCache[path]->itsNcId);
+	return nc_group(fileCache[path].get(), fileCache[path]->itsNcId);
 }
 
 /*
@@ -62,21 +62,17 @@ nc_group Open(const std::string& path)
 bool Close(const std::string& path)
 {
         // Ensure thread safety
-        std::lock_guard<std::mutex> lock(fileCacheMutex);
+        std::lock_guard<std::mutex> lock(netcdfLibMutex);
 
-        if(fileCache[path].use_count() == 1)
-	{
-                fileCache.erase(path);
-		return true;
-	}
+        fileCache.erase(path);
 
-	return false;
+	return true;
 }
 
 void Finalize()
 {
         // Ensure thread safety
-        std::lock_guard<std::mutex> lock(fileCacheMutex);
+        std::lock_guard<std::mutex> lock(netcdfLibMutex);
 
         fileCache.clear();
 }

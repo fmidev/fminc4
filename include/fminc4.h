@@ -17,7 +17,6 @@ struct nc_file
         }
 
         const int itsNcId;
-        std::mutex fileWriteMutex;
 };
 
 nc_group Create(const std::string&);

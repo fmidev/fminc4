@@ -7,8 +7,10 @@
 namespace fminc4
 {
 
+//extern std::mutex netcdfLibMutex;
+
 template <typename T>
-nc_var<T>::nc_var(std::shared_ptr<nc_file> theFile, int theNcId, int theVarId) : itsNcFile(theFile), itsNcId(theNcId), itsVarId(theVarId)
+nc_var<T>::nc_var(int theNcId, int theVarId) : itsNcId(theNcId), itsVarId(theVarId)
 {
 }
 
@@ -16,43 +18,38 @@ template <typename T>
 void nc_var<T>::Write(const std::vector<T>& vals)
 {
         // ensure thread safety
-        std::lock_guard<std::mutex> lock(itsNcFile->fileWriteMutex);
+        std::lock_guard<std::mutex> liblock(netcdfLibMutex);
 
         int status = nc_put_var(itsNcId, itsVarId, vals.data());
 	if(status != NC_NOERR)
 		throw status;
-	nc_sync(itsNcId);
 }
 
 template <typename T>
 void nc_var<T>::Write(const std::vector<T>& vals, const std::vector<size_t>& start,const std::vector<size_t>& count)
 {
         // ensure thread safety
-        std::lock_guard<std::mutex> lock(itsNcFile->fileWriteMutex);
+        std::lock_guard<std::mutex> lock(netcdfLibMutex);
 
         int status = nc_put_vara(itsNcId, itsVarId, start.data(), count.data(), vals.data());
 	if(status != NC_NOERR)
 		throw status;
-	nc_sync(itsNcId);
 }
 
 template <typename T>
 void nc_var<T>::Write(T value, const std::vector<size_t>& index)
 {
         // ensure thread safety
-        std::lock_guard<std::mutex> lock(itsNcFile->fileWriteMutex);
+        std::lock_guard<std::mutex> lock(netcdfLibMutex);
 
 	int status = nc_put_var1(itsNcId, itsVarId, index.data(), &value);
         if(status != NC_NOERR)
 		throw status;
-	nc_sync(itsNcId);
 }
 
 template <typename T>
 std::vector<T> nc_var<T>::Read()
 {
-        nc_sync(itsNcId);
-
 	size_t size = 1;
 	for(auto x : GetDims())
 		size *= x.Size();
@@ -70,7 +67,6 @@ template <typename T>
 T nc_var<T>::Read(const std::vector<size_t>& index)
 {
 	// thread safety required?
-	nc_sync(itsNcId);
 
         T ret;
         int status = nc_get_var1(itsNcId, itsVarId, index.data(), &ret);
@@ -83,7 +79,6 @@ template <typename T>
 std::vector<T> nc_var<T>::Read(const std::vector<size_t>& start,const std::vector<size_t>& count)
 {
 	// thread safety required?
-	nc_sync(itsNcId);
 
         std::vector<T> ret(std::accumulate(count.begin(), count.end(), 1.0, std::multiplies<T>()));
         int status = nc_get_vara(itsNcId, itsVarId, start.data(), count.data(), ret.data());
@@ -117,7 +112,6 @@ std::vector<std::string> nc_var<T>::ListAtts() const
 template <typename T>
 std::vector<nc_dim> nc_var<T>::GetDims()
 {
-        nc_sync(itsNcId);
 
         int ndims;
         int status = nc_inq_varndims(itsNcId, itsVarId, &ndims);
@@ -134,7 +128,7 @@ std::vector<nc_dim> nc_var<T>::GetDims()
 	ret.reserve(ndims);
 
         for(auto x : dimids)
-		ret.emplace_back(itsNcFile,itsNcId,x);
+		ret.emplace_back(itsNcId,x);
 	return ret;
 }
 

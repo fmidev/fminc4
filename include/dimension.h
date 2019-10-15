@@ -13,7 +13,7 @@ class nc_dim
 {
         public:
 	nc_dim() = default;
-	nc_dim(std::shared_ptr<nc_file>, int, int);
+	nc_dim(int, int);
 
         std::string Name();
         void Name(const std::string&);
@@ -24,7 +24,6 @@ class nc_dim
 	int DimId();
 
         private:
-	std::shared_ptr<nc_file> itsFile;
         int itsNcId;
         int itsDimId;
 };

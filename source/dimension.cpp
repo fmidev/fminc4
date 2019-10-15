@@ -4,7 +4,9 @@
 namespace fminc4
 {
 
-nc_dim::nc_dim(std::shared_ptr<nc_file> theFile, int theNcId, int theDimId) : itsFile(theFile), itsNcId(theNcId), itsDimId(theDimId) {}
+extern std::mutex netcdfLibMutex;
+
+nc_dim::nc_dim(int theNcId, int theDimId) : itsNcId(theNcId), itsDimId(theDimId) {}
 
 std::string nc_dim::Name()
 {
@@ -15,6 +17,7 @@ std::string nc_dim::Name()
 
 void nc_dim::Name(const std::string& theName)
 {
+	std::lock_guard<std::mutex> lock(netcdfLibMutex);
         nc_rename_dim(itsNcId, itsDimId, theName.c_str());
 }
 

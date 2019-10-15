@@ -10,6 +10,8 @@
 namespace fminc4
 {
 
+extern std::mutex netcdfLibMutex;
+
 template<typename T>
 class nc_var
 {
@@ -18,7 +20,7 @@ class nc_var
 
         public:
 	nc_var() = default;
-	nc_var(std::shared_ptr<nc_file>, int, int);
+	nc_var(int, int);
 
 	// Write data to variable
         void Write(const std::vector<T>&); // Linear chunk of data in memory, size fill the entire variable. DON'T USE WITH UNLIMITED DIMENSION VARIABLES
@@ -42,6 +44,10 @@ class nc_var
 	template<typename ATT_TYPE>
 	void AddAtt(const std::string&, const std::vector<ATT_TYPE>&);
 
+	template<typename ATT_TYPE>
+	void AddAtt(const std::string&, const ATT_TYPE&);
+	void AddTextAtt(const std::string&, const std::string&);
+
 	std::vector<std::string> ListAtts() const;
 	// end attributes
 
@@ -53,7 +59,6 @@ class nc_var
 	std::vector<ATT_TYPE> GetAtt(type<ATT_TYPE>,const std::string&);
 	std::vector<std::string> GetAtt(type<std::string>,const std::string&);
 
-        std::shared_ptr<nc_file> itsNcFile;
 	int itsNcId;
         int itsVarId;
 };
@@ -64,41 +69,71 @@ template <typename ATT_TYPE>
 void nc_var<T>::AddAtt(const std::string& name, const std::vector<ATT_TYPE>& values)
 {
         // ensure thread safety
-        std::lock_guard<std::mutex> lock(itsNcFile->fileWriteMutex);
+        std::lock_guard<std::mutex> lock(netcdfLibMutex);
 
+	int status;
 
         if(std::is_same<ATT_TYPE, double>::value)
         {
-                nc_put_att(itsNcId, itsVarId, name.c_str(), NC_DOUBLE, values.size(), values.data());
+                status = nc_put_att(itsNcId, itsVarId, name.c_str(), NC_DOUBLE, values.size(), values.data());
         }
         else if(std::is_same<ATT_TYPE, std::string>::value)
         {
-                nc_put_att(itsNcId, itsVarId, name.c_str(), NC_STRING, values.size(), values.data());
+                status = nc_put_att(itsNcId, itsVarId, name.c_str(), NC_STRING, values.size(), values.data());
         }
         else if(std::is_same<ATT_TYPE, float>::value)
         {
-                nc_put_att(itsNcId, itsVarId, name.c_str(), NC_FLOAT, values.size(), values.data());
+                status = nc_put_att(itsNcId, itsVarId, name.c_str(), NC_FLOAT, values.size(), values.data());
         }
         else if(std::is_same<ATT_TYPE, int>::value)
         {
-                nc_put_att(itsNcId, itsVarId, name.c_str(), NC_INT, values.size(), values.data());
+                status = nc_put_att(itsNcId, itsVarId, name.c_str(), NC_INT, values.size(), values.data());
         }
         else if(std::is_same<ATT_TYPE, long long>::value)
         {
-                nc_put_att(itsNcId, itsVarId, name.c_str(), NC_INT64, values.size(), values.data());
+                status = nc_put_att(itsNcId, itsVarId, name.c_str(), NC_INT64, values.size(), values.data());
         }
         else
         {
                 std::cout << "attribute: unknown type\n";
         }
-        nc_sync(itsNcId);
+
+        if(status != NC_NOERR)
+                throw status;
 }
+
+//Implementation in header as otherwise all permutations of T and ATT_TYPE needed to be explicitly instantiated
+template <typename T>
+template <typename ATT_TYPE>
+void nc_var<T>::AddAtt(const std::string& name, const ATT_TYPE& value)
+{
+        // ensure thread safety
+        std::lock_guard<std::mutex> lock(netcdfLibMutex);
+
+        int status;
+
+        if(std::is_same<ATT_TYPE, double>::value)
+        {
+                status = nc_put_att(itsNcId, itsVarId, name.c_str(), NC_DOUBLE, 1, &value);
+        }
+        else
+        {
+                std::cout << "attribute: unknown type\n";
+        }
+
+        if(status != NC_NOERR)
+	{
+                throw status;
+	}
+}
+
 
 template <typename T>
 template <typename ATT_TYPE>
 std::vector<ATT_TYPE> nc_var<T>::GetAtt(type<ATT_TYPE>,const std::string& name)
 {
         // thread safety required?
+        std::lock_guard<std::mutex> lock(netcdfLibMutex);
 
         size_t attlen;
         nc_inq_attlen(itsNcId, itsVarId, name.c_str(), &attlen);
@@ -113,6 +148,7 @@ std::vector<ATT_TYPE> nc_var<T>::GetAtt(type<ATT_TYPE>,const std::string& name)
 template <typename T>
 std::vector<std::string> nc_var<T>::GetAtt(type<std::string>,const std::string& name)
 {
+	std::lock_guard<std::mutex> lock(netcdfLibMutex);
         nc_type theType;
         int status = nc_inq_atttype(itsNcId, itsVarId, name.c_str(), &theType);
         switch(theType)
@@ -134,6 +170,16 @@ std::vector<std::string> nc_var<T>::GetAtt(type<std::string>,const std::string& 
                                         return ret;
                                 }
         }
+}
+
+template <typename T>
+void nc_var<T>::AddTextAtt(const std::string& attName, const std::string& attValue)
+{
+	std::lock_guard<std::mutex> lock(netcdfLibMutex);
+
+	int status = nc_put_att_text(itsNcId, itsVarId, attName.c_str(), attValue.length(),attValue.c_str());
+	if(status != NC_NOERR)
+                throw status;
 }
 
 } // end namespace fminc4

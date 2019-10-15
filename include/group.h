@@ -16,17 +16,17 @@ class nc_group
 {
         public:
         nc_group() = default;
-	nc_group(std::shared_ptr<nc_file>, int);
+	nc_group(nc_file*, int);
 
 	// sub groups
 	nc_group GetGroup(const std::string&);
-	void AddGroup(const std::string&);
+	nc_group AddGroup(const std::string&);
 	std::vector<std::string> ListGroups() const;
 	//---
 
         // dimensions
         nc_dim GetDim(const std::string&);
-        void AddDim(const std::string&, size_t);
+        nc_dim AddDim(const std::string&, size_t);
 	std::vector<nc_dim> ListDims() const;
 	//---
 
@@ -35,7 +35,7 @@ class nc_group
         nc_var<T> GetVar(const std::string&);
 
 	template<typename T>
-	void AddVar(const std::string&, const std::vector<nc_dim>&);
+	nc_var<T> AddVar(const std::string&, const std::vector<nc_dim>&);
 
 	std::vector<std::string> ListVars() const;
 	//---
@@ -51,7 +51,7 @@ class nc_group
 	//---
 
         private:
-        std::shared_ptr<nc_file> itsFile;
+        nc_file* itsFile;
 	int itsGroupId;
 };
 
