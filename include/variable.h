@@ -46,6 +46,7 @@ class nc_var
 
 	template<typename ATT_TYPE>
 	void AddAtt(const std::string&, const ATT_TYPE&);
+
 	void AddTextAtt(const std::string&, const std::string&);
 
 	std::vector<std::string> ListAtts() const;
@@ -110,7 +111,7 @@ void nc_var<T>::AddAtt(const std::string& name, const ATT_TYPE& value)
         // ensure thread safety
         std::lock_guard<std::mutex> lock(netcdfLibMutex);
 
-        int status;
+        int status = NC_NOERR;
 
         if(std::is_same<ATT_TYPE, double>::value)
         {

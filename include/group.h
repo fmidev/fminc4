@@ -16,7 +16,7 @@ class nc_group
 {
         public:
         nc_group() = default;
-	nc_group(nc_file*, int);
+	nc_group(std::shared_ptr<nc_file>, int);
 
 	// sub groups
 	nc_group GetGroup(const std::string&);
@@ -51,7 +51,7 @@ class nc_group
 	//---
 
         private:
-        nc_file* itsFile;
+        std::shared_ptr<nc_file> itsFile;
 	int itsGroupId;
 };
 

@@ -8,7 +8,7 @@ namespace fminc4
 
 // definitions
 std::mutex netcdfLibMutex;
-std::map<std::string, std::unique_ptr<nc_file>> fileCache;
+std::map<std::string, std::shared_ptr<nc_file>> fileCache;
 
 /*
  * Create a new netcdf file
@@ -27,9 +27,9 @@ nc_group Create(const std::string& path)
       		int status = nc_create(path.c_str(), kNc4, &itsNcId);
 		if(status != NC_NOERR)
 			throw status;
-	  	fileCache[path] = std::unique_ptr<nc_file>(new nc_file(itsNcId)); //std::make_unique<nc_file>(itsNcId);
+	  	fileCache[path] = std::make_shared<nc_file>(itsNcId);
 	}
-	return nc_group(fileCache[path].get(), fileCache[path]->itsNcId);
+	return nc_group(fileCache[path], fileCache[path]->itsNcId);
 }
 
 /*
@@ -47,10 +47,10 @@ nc_group Open(const std::string& path)
 		int status = nc_open(path.c_str(), kNcShare, &itsNcId);
         	if(status != NC_NOERR)
                 	throw status;
-        	fileCache[path] = std::unique_ptr<nc_file>(new nc_file(itsNcId)); //std::make_unique<nc_file>(itsNcId);
+        	fileCache[path] = std::make_shared<nc_file>(itsNcId);
 	}
 
-	return nc_group(fileCache[path].get(), fileCache[path]->itsNcId);
+	return nc_group(fileCache[path], fileCache[path]->itsNcId);
 }
 
 /*
@@ -64,9 +64,13 @@ bool Close(const std::string& path)
         // Ensure thread safety
         std::lock_guard<std::mutex> lock(netcdfLibMutex);
 
-        fileCache.erase(path);
+	if(fileCache[path].use_count() == 1)
+	{
+                fileCache.erase(path);
+		return true;
+	}
 
-	return true;
+	return false;
 }
 
 void Finalize()

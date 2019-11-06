@@ -7,7 +7,7 @@ namespace fminc4
 extern std::mutex netcdfLibMutex;
 //extern std::map<std::string, std::shared_ptr<nc_file>> fileCache;
 
-nc_group::nc_group(nc_file* theFile, int theGroupId) : itsFile(theFile), itsGroupId(theGroupId)
+nc_group::nc_group(std::shared_ptr<nc_file> theFile, int theGroupId) : itsFile(theFile), itsGroupId(theGroupId)
 {
 }
 
@@ -113,6 +113,12 @@ nc_var<VAR_TYPE> nc_group::AddVar(const std::string& theName, const std::vector<
                 if(status != NC_NOERR)
                         throw status;
         }
+        else if(std::is_same<VAR_TYPE,int>::value)
+        {
+                int status = nc_def_var(itsGroupId, theName.c_str(), NC_INT, itsDimIds.size(), itsDimIds.data(), NULL);
+                if(status != NC_NOERR)
+                        throw status;
+        }
         else if(std::is_same<VAR_TYPE,unsigned char>::value)
         {
                 int status = nc_def_var(itsGroupId, theName.c_str(), NC_CHAR, itsDimIds.size(), itsDimIds.data(), NULL);
@@ -135,6 +141,7 @@ template nc_var<float> nc_group::AddVar<float>(const std::string&, const std::ve
 template nc_var<long> nc_group::AddVar<long>(const std::string&, const std::vector<nc_dim>&);
 template nc_var<unsigned char> nc_group::AddVar<unsigned char>(const std::string&, const std::vector<nc_dim>&);
 template nc_var<signed char> nc_group::AddVar<signed char>(const std::string&, const std::vector<nc_dim>&);
+template nc_var<int> nc_group::AddVar<int>(const std::string&, const std::vector<nc_dim>&);
 
 std::vector<std::string> nc_group::ListVars() const
 {
