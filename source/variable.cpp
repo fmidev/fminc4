@@ -7,8 +7,6 @@
 namespace fminc4
 {
 
-//extern std::mutex netcdfLibMutex;
-
 template <typename T>
 nc_var<T>::nc_var(int theNcId, int theVarId) : itsNcId(theNcId), itsVarId(theVarId)
 {

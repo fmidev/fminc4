@@ -4,8 +4,6 @@
 #include "common.h"
 #include <iostream>
 #include <vector>
-#include <mutex>
-#include <map>
 #include <memory>
 #include "fminc4.h"
 

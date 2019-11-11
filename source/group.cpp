@@ -5,7 +5,6 @@
 namespace fminc4
 {
 extern std::mutex netcdfLibMutex;
-//extern std::map<std::string, std::shared_ptr<nc_file>> fileCache;
 
 nc_group::nc_group(std::shared_ptr<nc_file> theFile, int theGroupId) : itsFile(theFile), itsGroupId(theGroupId)
 {
@@ -95,39 +94,47 @@ nc_var<VAR_TYPE> nc_group::AddVar(const std::string& theName, const std::vector<
         for(nc_dim dim : theDims)
                 itsDimIds.push_back(dim.DimId());
 
+	int itsVarId;
+
         if(std::is_same<VAR_TYPE, double>::value)
         {
-                int status = nc_def_var(itsGroupId, theName.c_str(), NC_DOUBLE, itsDimIds.size(), itsDimIds.data(), NULL);
+                int status = nc_def_var(itsGroupId, theName.c_str(), NC_DOUBLE, itsDimIds.size(), itsDimIds.data(), &itsVarId);
                 if(status != NC_NOERR)
                         throw status;
         }
         else if(std::is_same<VAR_TYPE,float>::value)
         {
-                int status = nc_def_var(itsGroupId, theName.c_str(), NC_FLOAT, itsDimIds.size(), itsDimIds.data(), NULL);
+                int status = nc_def_var(itsGroupId, theName.c_str(), NC_FLOAT, itsDimIds.size(), itsDimIds.data(), &itsVarId);
                 if(status != NC_NOERR)
                         throw status;
         }
         else if(std::is_same<VAR_TYPE,long>::value)
         {
-                int status = nc_def_var(itsGroupId, theName.c_str(), NC_LONG, itsDimIds.size(), itsDimIds.data(), NULL);
+                int status = nc_def_var(itsGroupId, theName.c_str(), NC_INT64, itsDimIds.size(), itsDimIds.data(), &itsVarId);
+                if(status != NC_NOERR)
+                        throw status;
+        }
+        else if(std::is_same<VAR_TYPE,unsigned long>::value)
+        {
+                int status = nc_def_var(itsGroupId, theName.c_str(), NC_UINT64, itsDimIds.size(), itsDimIds.data(), &itsVarId);
                 if(status != NC_NOERR)
                         throw status;
         }
         else if(std::is_same<VAR_TYPE,int>::value)
         {
-                int status = nc_def_var(itsGroupId, theName.c_str(), NC_INT, itsDimIds.size(), itsDimIds.data(), NULL);
+                int status = nc_def_var(itsGroupId, theName.c_str(), NC_INT, itsDimIds.size(), itsDimIds.data(), &itsVarId);
                 if(status != NC_NOERR)
                         throw status;
         }
         else if(std::is_same<VAR_TYPE,unsigned char>::value)
         {
-                int status = nc_def_var(itsGroupId, theName.c_str(), NC_CHAR, itsDimIds.size(), itsDimIds.data(), NULL);
+                int status = nc_def_var(itsGroupId, theName.c_str(), NC_CHAR, itsDimIds.size(), itsDimIds.data(), &itsVarId);
                 if(status != NC_NOERR)
                         throw status;
         }
         else if(std::is_same<VAR_TYPE,signed char>::value)
         {
-                int status = nc_def_var(itsGroupId, theName.c_str(), NC_CHAR, itsDimIds.size(), itsDimIds.data(), NULL);
+                int status = nc_def_var(itsGroupId, theName.c_str(), NC_CHAR, itsDimIds.size(), itsDimIds.data(), &itsVarId);
                 if(status != NC_NOERR)
                         throw status;
         }
@@ -135,10 +142,13 @@ nc_var<VAR_TYPE> nc_group::AddVar(const std::string& theName, const std::vector<
         {
                 throw;
         }
+
+	return nc_var<VAR_TYPE>{itsGroupId,itsVarId};
 }
 template nc_var<double> nc_group::AddVar<double>(const std::string&, const std::vector<nc_dim>&);
 template nc_var<float> nc_group::AddVar<float>(const std::string&, const std::vector<nc_dim>&);
 template nc_var<long> nc_group::AddVar<long>(const std::string&, const std::vector<nc_dim>&);
+template nc_var<unsigned long> nc_group::AddVar<unsigned long>(const std::string&, const std::vector<nc_dim>&);
 template nc_var<unsigned char> nc_group::AddVar<unsigned char>(const std::string&, const std::vector<nc_dim>&);
 template nc_var<signed char> nc_group::AddVar<signed char>(const std::string&, const std::vector<nc_dim>&);
 template nc_var<int> nc_group::AddVar<int>(const std::string&, const std::vector<nc_dim>&);
