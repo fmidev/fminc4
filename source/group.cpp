@@ -60,31 +60,17 @@ std::vector<nc_dim> nc_group::ListDims() const
 // ---
 
 // Variables
-template <typename VAR_TYPE>
-nc_var<VAR_TYPE> nc_group::GetVar(const std::string& theName)
+nc_var nc_group::GetVar(const std::string& theName)
 {
 	std::lock_guard<std::mutex> lock(netcdfLibMutex);
 
 	int itsVarId;
         nc_inq_varid(itsGroupId, theName.c_str(), &itsVarId);      
 
-	return nc_var<VAR_TYPE>(itsGroupId, itsVarId);
+	return nc_var(itsGroupId, itsVarId);
 }
-template nc_var<int> nc_group::GetVar<int>(const std::string&);
-template nc_var<unsigned int> nc_group::GetVar<unsigned int>(const std::string&);
-template nc_var<double> nc_group::GetVar<double>(const std::string&);
-template nc_var<float> nc_group::GetVar<float>(const std::string&);
-template nc_var<short> nc_group::GetVar<short>(const std::string&);
-template nc_var<unsigned short> nc_group::GetVar<unsigned short>(const std::string&);
-template nc_var<long> nc_group::GetVar<long>(const std::string&);
-template nc_var<unsigned long> nc_group::GetVar<unsigned long>(const std::string&);
-template nc_var<long long> nc_group::GetVar<long long>(const std::string&);
-template nc_var<unsigned long long> nc_group::GetVar<unsigned long long>(const std::string&);
-template nc_var<signed char> nc_group::GetVar<signed char>(const std::string&);
-template nc_var<unsigned char> nc_group::GetVar<unsigned char>(const std::string&);
 
-template <typename VAR_TYPE>
-nc_var<VAR_TYPE> nc_group::AddVar(const std::string& theName, const std::vector<nc_dim>& theDims)
+nc_var nc_group::AddVar(const std::string& theName, const std::vector<nc_dim>& theDims, const nc_type& theType)
 {
         // ensure thread safety
         std::lock_guard<std::mutex> lock(netcdfLibMutex);
@@ -96,64 +82,14 @@ nc_var<VAR_TYPE> nc_group::AddVar(const std::string& theName, const std::vector<
 
 	int itsVarId;
 
-        if(std::is_same<VAR_TYPE, double>::value)
-        {
-                int status = nc_def_var(itsGroupId, theName.c_str(), NC_DOUBLE, itsDimIds.size(), itsDimIds.data(), &itsVarId);
-                if(status != NC_NOERR)
-                        throw status;
-        }
-        else if(std::is_same<VAR_TYPE,float>::value)
-        {
-                int status = nc_def_var(itsGroupId, theName.c_str(), NC_FLOAT, itsDimIds.size(), itsDimIds.data(), &itsVarId);
-                if(status != NC_NOERR)
-                        throw status;
-        }
-        else if(std::is_same<VAR_TYPE,long>::value)
-        {
-                int status = nc_def_var(itsGroupId, theName.c_str(), NC_INT64, itsDimIds.size(), itsDimIds.data(), &itsVarId);
-                if(status != NC_NOERR)
-                        throw status;
-        }
-        else if(std::is_same<VAR_TYPE,unsigned long>::value)
-        {
-                int status = nc_def_var(itsGroupId, theName.c_str(), NC_UINT64, itsDimIds.size(), itsDimIds.data(), &itsVarId);
-                if(status != NC_NOERR)
-                        throw status;
-        }
-        else if(std::is_same<VAR_TYPE,int>::value)
-        {
-                int status = nc_def_var(itsGroupId, theName.c_str(), NC_INT, itsDimIds.size(), itsDimIds.data(), &itsVarId);
-                if(status != NC_NOERR)
-                        throw status;
-        }
-        else if(std::is_same<VAR_TYPE,unsigned char>::value)
-        {
-                int status = nc_def_var(itsGroupId, theName.c_str(), NC_CHAR, itsDimIds.size(), itsDimIds.data(), &itsVarId);
-                if(status != NC_NOERR)
-                        throw status;
-        }
-        else if(std::is_same<VAR_TYPE,signed char>::value)
-        {
-                int status = nc_def_var(itsGroupId, theName.c_str(), NC_CHAR, itsDimIds.size(), itsDimIds.data(), &itsVarId);
-                if(status != NC_NOERR)
-                        throw status;
-        }
-        else
-        {
-                throw;
-        }
+        int status = nc_def_var(itsGroupId, theName.c_str(), theType, itsDimIds.size(), itsDimIds.data(), &itsVarId);
+        if(status != NC_NOERR)
+            throw status;
 
-	return nc_var<VAR_TYPE>{itsGroupId,itsVarId};
+	return nc_var{itsGroupId,itsVarId};
 }
-template nc_var<double> nc_group::AddVar<double>(const std::string&, const std::vector<nc_dim>&);
-template nc_var<float> nc_group::AddVar<float>(const std::string&, const std::vector<nc_dim>&);
-template nc_var<long> nc_group::AddVar<long>(const std::string&, const std::vector<nc_dim>&);
-template nc_var<unsigned long> nc_group::AddVar<unsigned long>(const std::string&, const std::vector<nc_dim>&);
-template nc_var<unsigned char> nc_group::AddVar<unsigned char>(const std::string&, const std::vector<nc_dim>&);
-template nc_var<signed char> nc_group::AddVar<signed char>(const std::string&, const std::vector<nc_dim>&);
-template nc_var<int> nc_group::AddVar<int>(const std::string&, const std::vector<nc_dim>&);
 
-std::vector<std::string> nc_group::ListVars() const
+std::vector<nc_var> nc_group::ListVars() const
 {
 
 	std::lock_guard<std::mutex> lock(netcdfLibMutex);
@@ -164,13 +100,11 @@ std::vector<std::string> nc_group::ListVars() const
 
         int status = nc_inq_varids(itsGroupId, &nvars, varids);
 
-        std::vector<std::string> ret;
+        std::vector<nc_var> ret;
 
         for (int i = 0; i<nvars; ++i)
         {
-                char recname[NC_MAX_NAME+1];
-                status = nc_inq_varname(itsGroupId, varids[i], recname);
-                ret.push_back(recname);
+                ret.emplace_back(itsGroupId, varids[i]);
         }
 
         return ret;
@@ -229,20 +163,24 @@ void nc_group::AddAtt(const std::string& name, const std::vector<ATT_TYPE>& valu
 	//...
 }
 
-std::vector<std::string> nc_group::ListAtts() const
+std::vector<std::tuple<std::string, nc_type, size_t>> nc_group::ListAtts() const
 {
 	std::lock_guard<std::mutex> lock(netcdfLibMutex);
 
         int natts;
 	nc_inq_natts(itsGroupId, &natts);
 
-        std::vector<std::string> ret;
+        std::vector<std::tuple<std::string, nc_type, size_t>> ret;
 
         for (int i = 0; i<natts; ++i)
         {
                 char recname[NC_MAX_NAME+1];
-                int status = nc_inq_attname(itsGroupId, NC_GLOBAL, i, recname);
-                ret.push_back(recname);
+		nc_type type;
+		size_t size;
+
+                nc_inq_attname(itsGroupId, NC_GLOBAL, i, recname);
+		nc_inq_att(itsGroupId, NC_GLOBAL, recname, &type, &size);
+                ret.emplace_back(recname, type, size);
         }
 
         return ret;

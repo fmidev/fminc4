@@ -29,13 +29,10 @@ class nc_group
 	//---
 
 	// variables
-        template<typename T>
-        nc_var<T> GetVar(const std::string&);
+        nc_var GetVar(const std::string&);
+	nc_var AddVar(const std::string&, const std::vector<nc_dim>&, const nc_type&);
 
-	template<typename T>
-	nc_var<T> AddVar(const std::string&, const std::vector<nc_dim>&);
-
-	std::vector<std::string> ListVars() const;
+	std::vector<nc_var> ListVars() const;
 	//---
 
 	// attributes
@@ -45,7 +42,7 @@ class nc_group
 	template<typename ATT_TYPE>
 	void AddAtt(const std::string&, const std::vector<ATT_TYPE>&);
 
-	std::vector<std::string> ListAtts() const;
+	std::vector<std::tuple<std::string, nc_type, size_t>> ListAtts() const;
 	//---
 
         private:

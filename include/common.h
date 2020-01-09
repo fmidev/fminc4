@@ -17,8 +17,6 @@ enum NcFileMode
 //predeclarations
 class nc_group;
 class nc_dim;
-
-template <typename T>
 class nc_var;
 
 }

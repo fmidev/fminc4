@@ -7,13 +7,19 @@
 namespace fminc4
 {
 
-template <typename T>
-nc_var<T>::nc_var(int theNcId, int theVarId) : itsNcId(theNcId), itsVarId(theVarId)
+nc_var::nc_var(int theNcId, int theVarId) : itsNcId(theNcId), itsVarId(theVarId)
 {
 }
 
+nc_type nc_var::Type() const
+{
+	nc_type varType;
+	nc_inq_vartype(itsNcId,itsVarId,&varType);
+	return varType;
+}
+
 template <typename T>
-void nc_var<T>::Write(const std::vector<T>& vals)
+void nc_var::Write(const std::vector<T>& vals)
 {
         // ensure thread safety
         std::lock_guard<std::mutex> liblock(netcdfLibMutex);
@@ -22,9 +28,14 @@ void nc_var<T>::Write(const std::vector<T>& vals)
 	if(status != NC_NOERR)
 		throw status;
 }
+template void nc_var::Write<float>(const std::vector<float>&);
+template void nc_var::Write<double>(const std::vector<double>&);
+template void nc_var::Write<short>(const std::vector<short>&);
+template void nc_var::Write<int>(const std::vector<int>&);
+template void nc_var::Write<uint64_t>(const std::vector<uint64_t>&);
 
 template <typename T>
-void nc_var<T>::Write(const std::vector<T>& vals, const std::vector<size_t>& start,const std::vector<size_t>& count)
+void nc_var::Write(const std::vector<T>& vals, const std::vector<size_t>& start, const std::vector<size_t>& count)
 {
         // ensure thread safety
         std::lock_guard<std::mutex> lock(netcdfLibMutex);
@@ -33,9 +44,14 @@ void nc_var<T>::Write(const std::vector<T>& vals, const std::vector<size_t>& sta
 	if(status != NC_NOERR)
 		throw status;
 }
+template void nc_var::Write<float>(const std::vector<float>&, const std::vector<size_t>&, const std::vector<size_t>&);
+template void nc_var::Write<double>(const std::vector<double>&, const std::vector<size_t>&, const std::vector<size_t>&);
+template void nc_var::Write<short>(const std::vector<short>&, const std::vector<size_t>&, const std::vector<size_t>&);
+template void nc_var::Write<int>(const std::vector<int>&, const std::vector<size_t>&, const std::vector<size_t>&);
+template void nc_var::Write<uint64_t>(const std::vector<uint64_t>&, const std::vector<size_t>&, const std::vector<size_t>&);
 
 template <typename T>
-void nc_var<T>::Write(T value, const std::vector<size_t>& index)
+void nc_var::Write(T value, const std::vector<size_t>& index)
 {
         // ensure thread safety
         std::lock_guard<std::mutex> lock(netcdfLibMutex);
@@ -44,9 +60,14 @@ void nc_var<T>::Write(T value, const std::vector<size_t>& index)
         if(status != NC_NOERR)
 		throw status;
 }
+template void nc_var::Write<float>(float, const std::vector<size_t>&);
+template void nc_var::Write<double>(double, const std::vector<size_t>&);
+template void nc_var::Write<short>(short, const std::vector<size_t>&);
+template void nc_var::Write<int>(int, const std::vector<size_t>&);
+template void nc_var::Write<uint64_t>(uint64_t, const std::vector<size_t>&);
 
 template <typename T>
-std::vector<T> nc_var<T>::Read()
+std::vector<T> nc_var::Read()
 {
 	size_t size = 1;
 	for(auto x : GetDims())
@@ -60,9 +81,14 @@ std::vector<T> nc_var<T>::Read()
 
 	return ret;
 }
+template std::vector<float> nc_var::Read<float>();
+template std::vector<double> nc_var::Read<double>();
+template std::vector<short> nc_var::Read<short>();
+template std::vector<int> nc_var::Read<int>();
+template std::vector<uint64_t> nc_var::Read<uint64_t>();
 
 template <typename T>
-T nc_var<T>::Read(const std::vector<size_t>& index)
+T nc_var::Read(const std::vector<size_t>& index)
 {
 	// thread safety required?
 
@@ -72,9 +98,14 @@ T nc_var<T>::Read(const std::vector<size_t>& index)
 		throw status;
         return ret;
 }
+template float nc_var::Read<float>(const std::vector<size_t>&);
+template double nc_var::Read<double>(const std::vector<size_t>&);
+template short nc_var::Read<short>(const std::vector<size_t>&);
+template int nc_var::Read<int>(const std::vector<size_t>&);
+template uint64_t nc_var::Read<uint64_t>(const std::vector<size_t>&);
 
 template <typename T>
-std::vector<T> nc_var<T>::Read(const std::vector<size_t>& start,const std::vector<size_t>& count)
+std::vector<T> nc_var::Read(const std::vector<size_t>& start, const std::vector<size_t>& count)
 {
 	// thread safety required?
 
@@ -84,31 +115,94 @@ std::vector<T> nc_var<T>::Read(const std::vector<size_t>& start,const std::vecto
 		throw status;
         return ret;
 }
+template std::vector<float> nc_var::Read<float>(const std::vector<size_t>&, const std::vector<size_t>&);
+template std::vector<double> nc_var::Read<double>(const std::vector<size_t>&, const std::vector<size_t>&);
+template std::vector<short> nc_var::Read<short>(const std::vector<size_t>&, const std::vector<size_t>&);
+template std::vector<int> nc_var::Read<int>(const std::vector<size_t>&, const std::vector<size_t>&);
+template std::vector<uint64_t> nc_var::Read<uint64_t>(const std::vector<size_t>&, const std::vector<size_t>&);
 
 // Attributes
-template <typename T>
-std::vector<std::string> nc_var<T>::ListAtts() const
+std::vector<std::tuple<std::string, nc_type, size_t>> nc_var::ListAtts() const
 {
         int natts;
 
         nc_inq_natts(itsNcId, &natts);
 	nc_inq_var(itsNcId,itsVarId,NULL,NULL,NULL,NULL,&natts);
 
-        std::vector<std::string> ret;
+        std::vector<std::tuple<std::string, nc_type, size_t>> ret;
 
         for (int i = 0; i<natts; ++i)
         {
                 char recname[NC_MAX_NAME+1];
-                int status = nc_inq_attname(itsNcId, itsVarId, i, recname);
-                ret.push_back(recname);
+		nc_type type;
+		size_t size;
+		
+                nc_inq_attname(itsNcId, itsVarId, i, recname);
+		nc_inq_att(itsNcId, itsVarId, recname, &type, &size) ;	
+                ret.emplace_back(recname, type, size);
         }
 
         return ret;
 }
 
-// Dimensions
+void nc_var::AddTextAtt(const std::string& attName, const std::string& attValue)
+{
+        std::lock_guard<std::mutex> lock(netcdfLibMutex);
+
+        int status = nc_put_att_text(itsNcId, itsVarId, attName.c_str(), attValue.length(),attValue.c_str());
+        if(status != NC_NOERR)
+                throw status;
+}
+
 template <typename T>
-std::vector<nc_dim> nc_var<T>::GetDims()
+std::vector<T> nc_var::GetAtt(const std::string& name)
+{
+        // thread safety required?
+        std::lock_guard<std::mutex> lock(netcdfLibMutex);
+
+        size_t attlen;
+        nc_inq_attlen(itsNcId, itsVarId, name.c_str(), &attlen);
+
+        std::vector<T> ret(attlen);
+
+        nc_get_att(itsNcId, itsVarId, name.c_str(), ret.data());
+
+        return ret;
+}
+template std::vector<double> nc_var::GetAtt<double>(const std::string&);
+
+template <>
+std::vector<std::string> nc_var::GetAtt(const std::string& name)
+{
+        std::lock_guard<std::mutex> lock(netcdfLibMutex);
+        nc_type theType;
+        int status = nc_inq_atttype(itsNcId, itsVarId, name.c_str(), &theType);
+        switch(theType)
+        {
+                case NC_CHAR :  {
+                                        size_t attlen;
+                                        status = nc_inq_attlen(itsNcId, itsVarId, name.c_str(), &attlen);
+                                        char att[attlen];
+                                        status = nc_get_att(itsNcId, itsVarId, name.c_str(), att);
+                                        return std::vector<std::string>{std::string(att).substr(0,attlen)};
+                                }
+                case NC_STRING :{
+                                        std::vector<char*> chars = GetAtt<char*>(name);
+                                        std::vector<std::string> ret;
+                                        for(auto x : chars)
+                                        {
+                                                ret.emplace_back(x);
+                                        }
+                                        return ret;
+                                }
+                default:
+                        throw status;
+        }
+}
+template std::vector<std::string> nc_var::GetAtt<std::string>(const std::string&);
+
+// Dimensions
+std::vector<nc_dim> nc_var::GetDims()
 {
 
         int ndims;
@@ -129,18 +223,5 @@ std::vector<nc_dim> nc_var<T>::GetDims()
 		ret.emplace_back(itsNcId,x);
 	return ret;
 }
-
-template class nc_var<int>;
-template class nc_var<unsigned int>;
-template class nc_var<double> ;
-template class nc_var<float>;
-template class nc_var<short>;
-template class nc_var<unsigned short>;
-template class nc_var<long>;
-template class nc_var<unsigned long>;
-template class nc_var<long long>;
-template class nc_var<unsigned long long>;
-template class nc_var<signed char>;
-template class nc_var<unsigned char>;
 
 } // end namespace
